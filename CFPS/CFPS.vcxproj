@@ -24,6 +24,11 @@
   <ItemGroup>
     <ClInclude Include="..\..\..\..\Downloads\olcConsoleGameEngine.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="src\fps_wall1.spr">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+  </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>

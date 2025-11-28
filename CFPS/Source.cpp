@@ -61,7 +61,8 @@ protected:
 		map += L"#..............##..............#";
 		map += L"################################";
 
-		spriteWall = new olcSprite(L"../src/fps_wall1.spr");
+		// right click for properties then (true)
+		spriteWall = new olcSprite(L"src/fps_wall1.spr");
 
 		return true;
 	}
@@ -190,33 +191,18 @@ protected:
 			int nCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)fDistToWall);
 			int nFloor = ScreenHeight() - nCeiling;
 
-			short nShade = ' ';
-			// using extended ascii
-			if (fDistToWall <= fDepth / 4.0f)			nShade = 0x2588;	// Very close	
-			else if (fDistToWall < fDepth / 3.0f)		nShade = 0x2593;
-			else if (fDistToWall < fDepth / 2.0f)		nShade = 0x2592;
-			else if (fDistToWall < fDepth)				nShade = 0x2591;
-			else									    nShade = ' ';		// Too far away
-
-			if (bBoundary)	nShade = ' ';
-
 			for (int y = 0; y < ScreenHeight(); y++) {
 				if (y <= nCeiling) {
 					Draw(x, y, L' ');
 				}
 				else if (y > nCeiling && y <= nFloor) {
-					Draw(x, y, nShade);
+					float fSampleY = ((float)y - (float)nCeiling) / ((float)nFloor - (float)nCeiling);
+					Draw(x, y, spriteWall->SampleGlyph(fSampleX, fSampleY), spriteWall->SampleColour(fSampleX, fSampleY));
 				}
 				else // Floor
 				{
-					// Shade floor based on distance
-					float b = 1.0f - (((float)y - ScreenHeight() / 2.0f) / ((float)ScreenHeight() / 2.0f));
-					if (b < 0.25)		nShade = '#';
-					else if (b < 0.5)	nShade = 'x';
-					else if (b < 0.75)	nShade = '.';
-					else if (b < 0.9)	nShade = '-';
-					else				nShade = ' ';
-					Draw(x, y, nShade);
+					// dark green floor
+					Draw(x, y, PIXEL_SOLID, FG_DARK_GREEN);
 				}
 			}
 		}
@@ -234,7 +220,7 @@ protected:
 int main() {
 	Ultimate_FPS game;
 
-	if (!game.ConstructConsole(240, 140, 4, 4)) {
+	if (!game.ConstructConsole(300, 160, 4, 4)) {
 		std::wcerr << L"Console construction failed!" << endl;
 		return -1;
 	}
