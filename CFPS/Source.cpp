@@ -30,7 +30,9 @@ private:
 	olcSprite* spriteWall;
 		
 	struct sObject {
-		float x, y;
+		float x, y; 
+		float vx, vy;
+		bool bRemove;
 		olcSprite* sprite;
 	};
 	list<sObject> listObjects;
@@ -81,9 +83,9 @@ protected:
 		spriteFireball = new olcSprite(L"src/fps_fireball1.spr");
 
 		listObjects = {
-			{ 8.5f, 8.5f, spriteLamp },
-			{ 7.5f, 7.5f, spriteLamp },
-			{ 10.5f, 3.5f, spriteLamp },
+			{ 8.5f, 8.5f, 0.0f, 0.0f, false, spriteLamp },
+			{ 7.5f, 7.5f, 0.0f, 0.0f, false, spriteLamp },
+			{ 10.5f, 3.5f, 0.0f, 0.0f, false, spriteLamp },
 		};
 
 		return true;
@@ -151,6 +153,20 @@ protected:
 				fPlayerX += cosf(fPlayerA) * fSpeed * fElapsedTime;
 				fPlayerY -= sinf(fPlayerA) * fSpeed * fElapsedTime;
 			}
+		}
+
+		if (m_keys[VK_SPACE].bReleased) {
+			sObject o;
+			o.x = fPlayerX;
+			o.y = fPlayerY;
+
+			float fNoise = (((float)rand() / (float)RAND_MAX) - 0.5f) * 0.1f;
+			o.vx = sinf(fPlayerA + fNoise) * 8.0f;
+			o.vy = cosf(fPlayerA + fNoise) * 8.0f;
+
+			o.sprite = spriteFireball;
+			o.bRemove = false;
+			listObjects.push_back(o);
 		}
 
 		for (int x = 0; x < ScreenWidth(); x++) {
@@ -238,12 +254,20 @@ protected:
 
 		// Draw objects
 		for (auto& object : listObjects) {
+			// update object physics
+			object.x += object.vx * fElapsedTime;
+			object.y += object.vy * fElapsedTime;
+
+			// Check if object is inside wall - set flag for removal
+			if (map.c_str()[(int)object.x * nMapWidth + (int)object.y] == '#')
+				object.bRemove = true;
+
 			// can it be seen?
 			float fVecX = object.x - fPlayerX;
 			float fVecY = object.y - fPlayerY;
 			float fDistFromPlayer = sqrtf(fVecX * fVecX + fVecY * fVecY);
 
-			// if in FOV?
+			// check if in FOV?
 			float fEyeX = sinf(fPlayerA);
 			float fEyeY = cosf(fPlayerA);
 			float fObjectAngle = atan2f(fEyeY, fEyeX) - atan2f(fVecY, fVecX);
@@ -285,6 +309,9 @@ protected:
 			}
 
 		}
+
+		// Remove dead objects from object list
+		listObjects.remove_if([](sObject& o) {return o.bRemove; });
 
 		// Display Map & Player
 		for (int nx = 0; nx < nMapWidth; nx++)
