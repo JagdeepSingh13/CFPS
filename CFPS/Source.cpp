@@ -24,7 +24,19 @@ private:
 	float fSpeed = 5.0f;
 	std::wstring map;
 
+	// to store walls, don't show lamps behind walls
+	float* fDepthBuffer = nullptr;
+
 	olcSprite* spriteWall;
+		
+	struct sObject {
+		float x, y;
+		olcSprite* sprite;
+	};
+	list<sObject> listObjects;
+
+	olcSprite* spriteLamp;
+	olcSprite* spriteFireball;
 
 protected:
 	virtual bool OnUserCreate() {
@@ -61,8 +73,18 @@ protected:
 		map += L"#..............##..............#";
 		map += L"################################";
 
+		fDepthBuffer = new float[ScreenWidth()];
+
 		// right click for properties then (true)
 		spriteWall = new olcSprite(L"src/fps_wall1.spr");
+		spriteLamp = new olcSprite(L"src/fps_lamp1.spr");
+		spriteFireball = new olcSprite(L"src/fps_fireball1.spr");
+
+		listObjects = {
+			{ 8.5f, 8.5f, spriteLamp },
+			{ 7.5f, 7.5f, spriteLamp },
+			{ 10.5f, 3.5f, spriteLamp },
+		};
 
 		return true;
 	}
@@ -137,7 +159,7 @@ protected:
 			float fRayAngle = (fPlayerA - fFOV / 2.0f) + ((float)x / (float)ScreenWidth()) * fFOV;
 
 			float fDistToWall = 0;
-			float fStepSize = 0.1f;
+			float fStepSize = 0.01f;
 			bool bHitWall = false;
 			bool bBoundary = false;
 
@@ -191,13 +213,20 @@ protected:
 			int nCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)fDistToWall);
 			int nFloor = ScreenHeight() - nCeiling;
 
+			fDepthBuffer[x] = fDistToWall;
+
 			for (int y = 0; y < ScreenHeight(); y++) {
 				if (y <= nCeiling) {
 					Draw(x, y, L' ');
 				}
 				else if (y > nCeiling && y <= nFloor) {
-					float fSampleY = ((float)y - (float)nCeiling) / ((float)nFloor - (float)nCeiling);
-					Draw(x, y, spriteWall->SampleGlyph(fSampleX, fSampleY), spriteWall->SampleColour(fSampleX, fSampleY));
+					if (fDistToWall < fDepth) {
+						float fSampleY = ((float)y - (float)nCeiling) / ((float)nFloor - (float)nCeiling);
+						Draw(x, y, spriteWall->SampleGlyph(fSampleX, fSampleY), spriteWall->SampleColour(fSampleX, fSampleY));
+					}
+					else {
+						Draw(x, y, PIXEL_SOLID, 0);
+					}
 				}
 				else // Floor
 				{
@@ -205,6 +234,56 @@ protected:
 					Draw(x, y, PIXEL_SOLID, FG_DARK_GREEN);
 				}
 			}
+		}
+
+		// Draw objects
+		for (auto& object : listObjects) {
+			// can it be seen?
+			float fVecX = object.x - fPlayerX;
+			float fVecY = object.y - fPlayerY;
+			float fDistFromPlayer = sqrtf(fVecX * fVecX + fVecY * fVecY);
+
+			// if in FOV?
+			float fEyeX = sinf(fPlayerA);
+			float fEyeY = cosf(fPlayerA);
+			float fObjectAngle = atan2f(fEyeY, fEyeX) - atan2f(fVecY, fVecX);
+			if (fObjectAngle < -3.14159f)
+				fObjectAngle += 2.0f * 3.14159f;
+			if (fObjectAngle > 3.14159f)
+				fObjectAngle -= 2.0f * 3.14159f;
+
+			bool bInFov = fabs(fObjectAngle) < fFOV / 2.0f;
+
+			if (bInFov && fDistFromPlayer >= 0.5f && fDistFromPlayer < fDepth) {
+				// object will have variable height like walls
+				float fObjectCeiling = (float)(ScreenHeight() / 2.0) - ScreenHeight() / ((float)fDistFromPlayer);
+				float fObjectFloor = ScreenHeight() - fObjectCeiling;
+				float fObjectHeight = fObjectFloor - fObjectCeiling;
+
+				float fObjectAspectRatio = (float)object.sprite->nHeight / (float)object.sprite->nWidth;
+				float fObjectWidth = fObjectHeight / fObjectAspectRatio;
+
+				float fMiddleOfObject = (0.5f * (fObjectAngle / (fFOV / 2.0f)) + 0.5f) * (float)ScreenWidth();
+
+				// Draw Lamp
+				for (float lx = 0; lx < fObjectWidth; lx++)
+				{
+					for (float ly = 0; ly < fObjectHeight; ly++)
+					{
+						float fSampleX = lx / fObjectWidth;
+						float fSampleY = ly / fObjectHeight;
+						wchar_t c = object.sprite->SampleGlyph(fSampleX, fSampleY);
+						int nObjectColumn = (int)(fMiddleOfObject + lx - (fObjectWidth / 2.0f));
+						if (nObjectColumn >= 0 && nObjectColumn < ScreenWidth()) {
+							if (c != L' ' && fDepthBuffer[nObjectColumn] >= fDistFromPlayer) {
+								Draw(nObjectColumn, fObjectCeiling + ly, c, object.sprite->SampleColour(fSampleX, fSampleY));
+								fDepthBuffer[nObjectColumn] = fDistFromPlayer;
+							}
+						}
+					}
+				}
+			}
+
 		}
 
 		// Display Map & Player

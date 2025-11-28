@@ -26,5 +26,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="src\fps_wall1.spr" />
+    <None Include="src\fps_fireball1.spr" />
+    <None Include="src\fps_lamp1.spr" />
   </ItemGroup>
 </Project>

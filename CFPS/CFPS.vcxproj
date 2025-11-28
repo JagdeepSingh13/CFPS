@@ -25,6 +25,12 @@
     <ClInclude Include="..\..\..\..\Downloads\olcConsoleGameEngine.h" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="src\fps_fireball1.spr">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
+    <None Include="src\fps_lamp1.spr">
+      <DeploymentContent>true</DeploymentContent>
+    </None>
     <None Include="src\fps_wall1.spr">
       <DeploymentContent>true</DeploymentContent>
     </None>
