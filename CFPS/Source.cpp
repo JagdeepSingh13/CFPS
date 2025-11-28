@@ -4,7 +4,7 @@
 #include<vector>
 #include<utility>
 #include<algorithm>
-#include <olcConsoleGameEngine.h>
+#include<olcConsoleGameEngine.h>
 using namespace std;
 
 class Ultimate_FPS : public olcConsoleGameEngine {
@@ -13,8 +13,8 @@ public:
 		m_sAppName = L"ULtimate FPS";
 	}
 private:
-	int nMapWidth = 16;
-	int nMapHeight = 16;
+	int nMapWidth = 32;
+	int nMapHeight = 32;
 
 	float fPlayerX = 8.0f;
 	float fPlayerY = 8.0f;
@@ -24,27 +24,44 @@ private:
 	float fSpeed = 5.0f;
 	std::wstring map;
 
-	// bool bJustShot = false;
-	// float fShotTimer = 0.0f;
+	olcSprite* spriteWall;
+
 protected:
 	virtual bool OnUserCreate() {
-		map.clear();
-		map += L"################";
-		map += L"#..............#";
-		map += L"#..............#";
-		map += L"#...........##.#";
-		map += L"#...........##.#";
-		map += L"#...........##.#";
-		map += L"#...........##.#";
-		map += L"#..............#";
-		map += L"#..............#";
-		map += L"#..............#";
-		map += L"#..............#";
-		map += L"#..............#";
-		map += L"#........#######";
-		map += L"#..............#";
-		map += L"#..............#";
-		map += L"################";
+		map += L"#########.......#########.......";
+		map += L"#...............#...............";
+		map += L"#.......#########.......########";
+		map += L"#..............##..............#";
+		map += L"#......##......##......##......#";
+		map += L"#......##..............##......#";
+		map += L"#..............##..............#";
+		map += L"###............####............#";
+		map += L"##.............###.............#";
+		map += L"#............####............###";
+		map += L"#..............................#";
+		map += L"#..............##..............#";
+		map += L"#..............##..............#";
+		map += L"#...........#####...........####";
+		map += L"#..............................#";
+		map += L"###..####....########....#######";
+		map += L"####.####.......######..........";
+		map += L"#...............#...............";
+		map += L"#.......#########.......##..####";
+		map += L"#..............##..............#";
+		map += L"#......##......##.......#......#";
+		map += L"#......##......##......##......#";
+		map += L"#..............##..............#";
+		map += L"###............####............#";
+		map += L"##.............###.............#";
+		map += L"#............####............###";
+		map += L"#..............................#";
+		map += L"#..............................#";
+		map += L"#..............##..............#";
+		map += L"#...........##..............####";
+		map += L"#..............##..............#";
+		map += L"################################";
+
+		spriteWall = new olcSprite(L"../src/fps_wall1.spr");
 
 		return true;
 	}
@@ -70,7 +87,7 @@ protected:
 		{
 			fPlayerX += sinf(fPlayerA) * fSpeed * fElapsedTime;;
 			fPlayerY += cosf(fPlayerA) * fSpeed * fElapsedTime;;
-			if (map.c_str()[(int)fPlayerX * nMapWidth + (int)fPlayerY] == '#')
+			if (map[(int)fPlayerX * nMapWidth + (int)fPlayerY] == '#')
 			{
 				fPlayerX -= sinf(fPlayerA) * fSpeed * fElapsedTime;;
 				fPlayerY -= cosf(fPlayerA) * fSpeed * fElapsedTime;;
@@ -89,21 +106,48 @@ protected:
 			}
 		}
 
+		// Handle Strafe Right movement & collision
+		if (m_keys[L'E'].bHeld)
+		{
+			fPlayerX += cosf(fPlayerA) * fSpeed * fElapsedTime;
+			fPlayerY -= sinf(fPlayerA) * fSpeed * fElapsedTime;
+			if (map.c_str()[(int)fPlayerX * nMapWidth + (int)fPlayerY] == '#')
+			{
+				fPlayerX -= cosf(fPlayerA) * fSpeed * fElapsedTime;
+				fPlayerY += sinf(fPlayerA) * fSpeed * fElapsedTime;
+			}
+		}
+
+		// Handle Strafe Left movement & collision
+		if (m_keys[L'Q'].bHeld)
+		{
+			fPlayerX -= cosf(fPlayerA) * fSpeed * fElapsedTime;
+			fPlayerY += sinf(fPlayerA) * fSpeed * fElapsedTime;
+			if (map.c_str()[(int)fPlayerX * nMapWidth + (int)fPlayerY] == '#')
+			{
+				fPlayerX += cosf(fPlayerA) * fSpeed * fElapsedTime;
+				fPlayerY -= sinf(fPlayerA) * fSpeed * fElapsedTime;
+			}
+		}
+
 		for (int x = 0; x < ScreenWidth(); x++) {
 			// we will send out 120 rays
 			// for each column, calculate projected ray angle into world space
 			float fRayAngle = (fPlayerA - fFOV / 2.0f) + ((float)x / (float)ScreenWidth()) * fFOV;
 
 			float fDistToWall = 0;
+			float fStepSize = 0.1f;
 			bool bHitWall = false;
 			bool bBoundary = false;
+
+			float fSampleX = 0.0f;
 
 			// unit vector of ray in player space
 			float fEyeX = sinf(fRayAngle);
 			float fEyeY = cosf(fRayAngle);
 
 			while (!bHitWall && fDistToWall < fDepth) {
-				fDistToWall += 0.1f;
+				fDistToWall += fStepSize;
 
 				// move in direction of unit vector
 				int nTestX = (int)(fPlayerX + fEyeX * fDistToWall);
@@ -116,29 +160,28 @@ protected:
 				}
 				else {
 					// ray is inbounds so check if cell is a wall block
-					if (map[nTestY * nMapWidth + nTestX] == '#') {
+					if (map.c_str()[nTestY * nMapWidth + nTestX] == '#') {
 						bHitWall = true;
+						
+						// consider cell is 1*1
+						float fBlockMidX = (float)nTestX + 0.5f;
+						float fBlockMidY = (float)nTestY + 0.5f;
 
-						vector<pair<float, float> > p;   // dist, angle (dot product)
-						for (int tx = 0; tx < 2; tx++) {
-							for (int ty = 0; ty < 2; ty++) {
-								// Angle of corner to eye
-								float vy = (float)nTestY + ty - fPlayerY;
-								float vx = (float)nTestX + tx - fPlayerX;
-								float d = sqrt(vx * vx + vy * vy);
-								float dot = (fEyeX * vx / d) + (fEyeY * vy / d);
-								p.push_back(make_pair(d, dot));
-							}
-						}
+						// point where collision has occured
+						float fTestPointX = fPlayerX + fEyeX * fDistToWall;
+						float fTestPointY = fPlayerY + fEyeY * fDistToWall;
 
-						// Sort Pairs from closest to farthest
-						sort(p.begin(), p.end(), [](const pair<float, float>& left, const pair<float, float>& right) {return left.first < right.first; });
+						float fTestAngle = atan2f((fTestPointY - fBlockMidY), (fTestPointX - fBlockMidX));
 
-						float fBound = 0.01;
-						// take cos -1 of dot to get angle b/ww two rays
-						if (acos(p.at(0).second) < fBound) bBoundary = true;
-						if (acos(p.at(1).second) < fBound) bBoundary = true;
-						// if (acos(p.at(2).second) < fBound) bBoundary = true;
+						// rotate by pi/4 so each edge is one quadrant
+						if (fTestAngle >= -3.14159f * 0.25f && fTestAngle < 3.14159f * 0.25f)
+							fSampleX = fTestPointY - (float)nTestY;
+						if (fTestAngle >= 3.14159f * 0.25f && fTestAngle < 3.14159f * 0.75f)
+							fSampleX = fTestPointX - (float)nTestX;
+						if (fTestAngle < -3.14159f * 0.25f && fTestAngle >= -3.14159f * 0.75f)
+							fSampleX = fTestPointX - (float)nTestX;
+						if (fTestAngle >= 3.14159f * 0.75f || fTestAngle < -3.14159f * 0.75f)
+							fSampleX = fTestPointY - (float)nTestY;
 					}
 				}
 			}
@@ -191,7 +234,7 @@ protected:
 int main() {
 	Ultimate_FPS game;
 
-	if (!game.ConstructConsole(240, 160, 4, 4)) {
+	if (!game.ConstructConsole(240, 140, 4, 4)) {
 		std::wcerr << L"Console construction failed!" << endl;
 		return -1;
 	}
